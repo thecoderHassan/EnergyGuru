@@ -128,7 +128,7 @@ with st.sidebar:
     demo_mode = st.toggle(
         "🎮 Demo Mode (No Hardware)",
          value=st.session_state.demo_mode
-         )
+   )
    st.session_state.demo_mode = demo_mode
 
 selected_port = None
