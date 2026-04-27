@@ -123,13 +123,13 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-st.markdown('<div class="eg-section">Connection</div>', unsafe_allow_html=True)
+    st.markdown('<div class="eg-section">Connection</div>', unsafe_allow_html=True)
 
-demo_mode = st.toggle(
-    "🎮 Demo Mode (No Hardware)",
-    value=st.session_state.demo_mode
-)
-st.session_state.demo_mode = demo_mode
+    demo_mode = st.toggle(
+        "🎮 Demo Mode (No Hardware)",
+         value=st.session_state.demo_mode
+         )
+   st.session_state.demo_mode = demo_mode
 
 selected_port = None
 
