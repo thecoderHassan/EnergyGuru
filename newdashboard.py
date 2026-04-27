@@ -123,81 +123,95 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-    st.markdown('<div class="eg-section">Connection</div>', unsafe_allow_html=True)
-    demo_mode = st.toggle("🎮 Demo Mode (No Hardware)", value=st.session_state.demo_mode)
-    st.session_state.demo_mode = demo_mode
+st.markdown('<div class="eg-section">Connection</div>', unsafe_allow_html=True)
 
-    if not demo_mode:
-        ports_list = serial.tools.list_ports.comports()
-
-arduino_ports = []
-
-for p in ports_list:
-    desc = str(p.description).lower()
-
-    if (
-        "arduino" in desc
-        or "ch340" in desc
-        or "usb serial" in desc
-        or "cp210" in desc
-    ):
-        arduino_ports.append(p.device)
+demo_mode = st.toggle(
+    "🎮 Demo Mode (No Hardware)",
+    value=st.session_state.demo_mode
+)
+st.session_state.demo_mode = demo_mode
 
 selected_port = None
 
-if arduino_ports:
-    selected_port = st.selectbox(
-        "Select Arduino Port",
-        arduino_ports
-    )
-else:
-    st.warning("Arduino not detected")
+if not demo_mode:
 
-# optional debug
-for p in ports_list:
-    st.caption(f"{p.device} - {p.description}")
-        c1, c2 = st.columns(2)
-        with c1:
-    if st.button("▶ Connect", use_container_width=True):
+    baud = 9600
 
-        if selected_port is None:
-            st.error("Please select Arduino port first")
+    ports_list = list(serial.tools.list_ports.comports())
+    arduino_ports = []
 
-        else:
-            try:
-                # close old port if open
-                if st.session_state.serial_conn:
-                    try:
-                        st.session_state.serial_conn.close()
-                    except:
-                        pass
+    for p in ports_list:
+        desc = str(p.description).lower()
 
-                time.sleep(1)
+        if (
+            "arduino" in desc
+            or "ch340" in desc
+            or "usb serial" in desc
+            or "cp210" in desc
+        ):
+            arduino_ports.append(p.device)
 
-                # open selected port
-                ser = serial.Serial(
-                    selected_port,
-                    baud,
-                    timeout=2
-                )
+    if arduino_ports:
+        selected_port = st.selectbox(
+            "Select Arduino Port",
+            arduino_ports
+        )
+    else:
+        st.warning("⚠ Arduino not detected")
 
-                time.sleep(2)
-                ser.reset_input_buffer()
+    # debug ports
+    with st.expander("Show detected ports"):
+        for p in ports_list:
+            st.write(f"{p.device} → {p.description}")
 
-                st.session_state.serial_conn = ser
-                st.session_state.connected = True
+    c1, c2 = st.columns(2)
 
-                st.success(f"Connected to {selected_port}")
+    with c1:
+        if st.button("▶ Connect", use_container_width=True):
 
-            except Exception as e:
-                st.error(str(e))
-        with c2:
-            if st.button("■ Disconnect", use_container_width=True):
-                if st.session_state.serial_conn:
-                    try: st.session_state.serial_conn.close()
-                    except: pass
-                st.session_state.connected = False
-                st.session_state.serial_conn = None
+            if selected_port is None:
+                st.error("Select Arduino port first")
+
+            else:
+                try:
+                    # close old connection
+                    if st.session_state.serial_conn:
+                        try:
+                            st.session_state.serial_conn.close()
+                        except:
+                            pass
+
+                    time.sleep(1)
+
+                    ser = serial.Serial(
+                        selected_port,
+                        baudrate=baud,
+                        timeout=2
+                    )
+
+                    time.sleep(2)
+                    ser.reset_input_buffer()
+
+                    st.session_state.serial_conn = ser
+                    st.session_state.connected = True
+
+                    st.success(f"Connected → {selected_port}")
+
+                except Exception as e:
+                    st.error(f"Connection failed: {e}")
+
+    with c2:
+        if st.button("■ Disconnect", use_container_width=True):
+
+            if st.session_state.serial_conn:
+                try:
+                    st.session_state.serial_conn.close()
+                except:
+                    pass
+
+            st.session_state.serial_conn = None
+            st.session_state.connected = False
+            st.success("Disconnected")
 
     # Status indicator
     if demo_mode:
@@ -211,15 +225,15 @@ for p in ports_list:
         st.markdown('<div class="eg-section">Demo Controls</div>', unsafe_allow_html=True)
         st.session_state.demo_v_base = st.slider(
             "Demo Voltage (V)",
-            min_value=180.0,
+            min_value=1.0,
             max_value=260.0,
             value=float(st.session_state.demo_v_base),
-            step=0.5,
+            step=1.0,
         )
         st.session_state.demo_i_base = st.slider(
             "Demo Current (A)",
             min_value=0.1,
-            max_value=5.0,
+            max_value=10.0,
             value=float(st.session_state.demo_i_base),
             step=0.05,
         )
@@ -290,7 +304,8 @@ def _arduino_reading():
     if not conn or not st.session_state.connected:
         return None
     try:
-        raw = conn.readline().decode('utf-8', errors='ignore').strip()
+        conn.reset_input_buffer()
+        raw = conn.readline().decode(errors="ignore").strip()
         if ',' in raw:
             p = raw.split(',')
             if len(p) == 7:
@@ -995,6 +1010,10 @@ with tab4:
 render_footer()
 
 # ── Auto refresh (live updates) ──────────────────────────────
-if st.session_state.demo_mode or st.session_state.connected:
+if st.session_state.demo_mode:
+    time.sleep(1)
+    st.rerun()
+
+elif st.session_state.connected:
     time.sleep(1)
     st.rerun()
